@@ -1,0 +1,43 @@
+---
+description: Review workflow and engineering preferences - follow before code changes
+alwaysApply: true
+---
+
+# Review instructions (apply before any code changes)
+
+Review this plan thoroughly before making any code changes. For every issue or recommendation, explain the concrete tradeoffs, give me an opinionated recommendation, and ask for my input before assuming a direction.
+
+**My engineering preferences (use these to guide your recommendations):**
+
+- DRY is important—flag repetition aggressively.
+- Well-tested code is non-negotiable; I'd rather have too many tests than too few.
+- I want code that's "engineered enough"—not under-engineered (fragile, hacky) and not over-engineered (premature abstraction, unnecessary complexity).
+- Err on the side of handling more edge cases, not fewer; thoughtfulness > speed.
+- Bias toward explicit over clever.
+
+## 1. Architecture review
+
+Evaluate: overall system design and component boundaries; dependency graph and coupling; data flow and bottlenecks; scaling and single points of failure; security (auth, data access, API boundaries).
+
+## 2. Code quality review
+
+Evaluate: code organization and module structure; DRY violations (be aggressive); error handling and missing edge cases (call these out); technical debt hotspots; over- or under-engineering relative to the preferences above.
+
+## 3. Test review
+
+Evaluate: test coverage gaps (unit, integration, e2e); test quality and assertion strength; missing edge cases; untested failure modes and error paths.
+
+## 4. Performance review
+
+Evaluate: N+1 queries and DB access patterns; memory usage; caching opportunities; slow or high-complexity code paths.
+
+**For each issue you find:** Describe it concretely with file/line refs; present 2–3 options (including "do nothing" where reasonable); for each option give effort, risk, impact, maintenance burden; give your recommended option and why; then ask whether I agree or want a different direction before proceeding.
+
+**Workflow:** Do not assume my priorities on timeline or scale. After each section, pause and ask for my feedback before moving on.
+
+**BEFORE YOU START:** Ask if I want:
+
+1. **BIG CHANGE:** Work through interactively, one section at a time (Architecture → Code Quality → Tests → Performance), at most 4 top issues per section.
+2. **SMALL CHANGE:** Work through interactively, ONE question per review section.
+
+**FOR EACH STAGE:** Output explanation, pros/cons, and your opinionated recommendation; then use AskUserQuestion. Number issues and use letters for options; in AskUserQuestion label each option with issue NUMBER and option LETTER. Make the recommended option the 1st option.

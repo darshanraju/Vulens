@@ -1,0 +1,38 @@
+{
+  "name": "vu-layer1",
+  "version": "0.1.0",
+  "description": "Vu Layer 1 — Data Moat (ingestion, enrichment, outcome tracking, scoring)",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "api": "node dist/server.js",
+    "worker": "node dist/worker-daily.js",
+    "dev:api": "tsx watch src/api.ts",
+    "dev:worker": "tsx watch src/worker-daily.ts",
+    "db:migrate": "tsx src/db/migrate.ts",
+    "backfill": "tsx src/backfill/run-backfill-script.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint src --ext .ts"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "express": "^4.21.0",
+    "pg": "^8.12.0"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^22.0.0",
+    "@types/pg": "^8.11.6",
+    "@types/supertest": "^6.0.2",
+    "eslint": "^9.0.0",
+    "supertest": "^7.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.4.0",
+    "vitest": "^2.0.0"
+  }
+}
