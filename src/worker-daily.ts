@@ -14,6 +14,13 @@ import { runScoring } from "./scoring/compute-account-score.js";
 
 const DEFAULT_TWEET_LIMIT_PER_ASSET = Number(process.env.TRENDING_BATCH_LIMIT_PER_ASSET || "500");
 
+/** Delay in ms between CoinGecko API calls to avoid rate limits (default 2s). */
+const COINGECKO_DELAY_MS = Number(process.env.COINGECKO_DELAY_MS || "2000");
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
 export async function runDailyTrendingBatch(
   windowStart: Date,
   windowEnd: Date
@@ -36,15 +43,20 @@ export async function runDailyTrendingBatch(
 
   for (const row of res.rows as Array<{ asset_id: number; symbol: string }>) {
     console.log("Ingesting tweets for trending asset", row.symbol, "(", row.asset_id, ")");
-    const inserted = await ingestTrendingTweetsForAsset(
-      pool,
-      row.asset_id,
-      row.symbol,
-      windowStart,
-      windowEnd,
-      DEFAULT_TWEET_LIMIT_PER_ASSET
-    );
-    console.log("Inserted tweets for", row.symbol, ":", inserted);
+    try {
+      const inserted = await ingestTrendingTweetsForAsset(
+        pool,
+        row.asset_id,
+        row.symbol,
+        windowStart,
+        windowEnd,
+        DEFAULT_TWEET_LIMIT_PER_ASSET
+      );
+      console.log("Inserted tweets for", row.symbol, ":", inserted);
+    } catch (err) {
+      console.error("Ingestion failed for", row.symbol, ":", err instanceof Error ? err.message : err);
+      if (err instanceof Error && err.stack) console.error(err.stack);
+    }
   }
 
   // Set price_t0 for newly ingested posts (price at tweet time; required for outcome tracking)
@@ -54,15 +66,21 @@ export async function runDailyTrendingBatch(
      JOIN assets a ON a.id = p.asset_id
      WHERE p.price_t0 IS NULL AND a.coingecko_id IS NOT NULL`
   );
+  const numWithoutPrice = (postsWithoutPrice.rows as unknown[]).length;
+  console.log("Starting price_t0 backfill for", numWithoutPrice, "posts (delay", COINGECKO_DELAY_MS, "ms between requests)");
   for (const row of postsWithoutPrice.rows as Array<{ id: string; asset_id: number; posted_at: Date; coingecko_id: string }>) {
     const postedAt = new Date(row.posted_at);
     const price = await getPriceAtTimeUsd(row.coingecko_id, postedAt);
     if (price != null && price > 0) {
       await pool.query("UPDATE posts SET price_t0 = $1 WHERE id = $2", [price, row.id]);
     }
+    await sleep(COINGECKO_DELAY_MS);
   }
 
+  console.log("Starting outcome tracking");
   await runOutcomeTracking(pool);
+
+  console.log("Starting scoring");
   await runScoring(pool);
 
   console.log("Daily trending batch complete.");
@@ -89,7 +107,7 @@ const isEntrypoint =
   process.argv[1].includes("worker-daily");
 if (isEntrypoint) {
   main().catch((e) => {
-    console.error(e);
+    console.error("Worker failed:", e instanceof Error ? e.stack : e);
     process.exit(1);
   });
 }

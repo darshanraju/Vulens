@@ -5,6 +5,13 @@
 import type { Pool } from "pg";
 import { getPriceAtTimeUsd } from "../enrichment/price-snapshot.js";
 
+/** Delay in ms between CoinGecko API calls to avoid rate limits (default 2s). */
+const COINGECKO_DELAY_MS = Number(process.env.COINGECKO_DELAY_MS || "2000");
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
 export const OUTCOME_WINDOWS = ["1h", "4h", "12h", "24h"] as const;
 export type OutcomeWindow = (typeof OUTCOME_WINDOWS)[number];
 
@@ -110,6 +117,7 @@ export async function runOutcomeTrackingForWindow(
     } catch {
       errors++;
     }
+    await sleep(COINGECKO_DELAY_MS);
   }
 
   return { processed, errors };
