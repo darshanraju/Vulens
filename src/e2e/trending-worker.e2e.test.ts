@@ -67,14 +67,17 @@ describe.skipIf(!isE2EDatabaseAvailable())("E2E: worker-daily", () => {
       },
     });
 
-    // Stub getCurrentPriceUsd used by outcome-tracking to provide deterministic window prices
-    const { getCurrentPriceUsd } = await import("../enrichment/price-snapshot.js");
-    vi.spyOn(await import("../enrichment/price-snapshot.js"), "getCurrentPriceUsd").mockImplementation(
-      async (id: string) => {
-        if (id === "pepe") {
-          return 1.1; // simple constant > price_t0 so pct_delta > 0
-        }
-        return 1;
+    // Stub getPriceAtTimeUsd: price at tweet time = 1.0, at window times = 1.1 so pct_delta > 0
+    const priceSnapshot = await import("../enrichment/price-snapshot.js");
+    vi.spyOn(priceSnapshot, "getPriceAtTimeUsd").mockImplementation(
+      async (_id: string, at: Date) => {
+        const t = at.getTime();
+        const tweetTimes = [
+          new Date("2026-03-10T09:00:00.000Z").getTime(),
+          new Date("2026-03-10T10:00:00.000Z").getTime(),
+        ];
+        const isTweetTime = tweetTimes.some((t0) => Math.abs(t - t0) < 60 * 1000);
+        return isTweetTime ? 1.0 : 1.1;
       }
     );
 

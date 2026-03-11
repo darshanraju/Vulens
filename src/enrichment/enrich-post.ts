@@ -2,7 +2,7 @@ import type { Pool } from "pg";
 import type { PersistibleTweet } from "../ingestion/types.js";
 import { getCoinGeckoId } from "./asset-resolver.js";
 import { resolveAsset } from "./resolve-and-insert.js";
-import { getCurrentPriceUsd } from "./price-snapshot.js";
+import { getPriceAtTimeUsd } from "./price-snapshot.js";
 import { extractAccountMetadata } from "./account-metadata.js";
 import { classifySentiment } from "../sentiment/classify.js";
 
@@ -22,7 +22,7 @@ export async function enrichPost(pool: Pool, tweet: PersistibleTweet): Promise<v
       const coingeckoId = getCoinGeckoId(symbol);
       let priceT0: number | null = null;
       if (coingeckoId) {
-        priceT0 = await getCurrentPriceUsd(coingeckoId);
+        priceT0 = await getPriceAtTimeUsd(coingeckoId, new Date(tweet.created_at));
       }
       await pool.query(
         `UPDATE posts SET asset_id = $1, price_t0 = $2, sentiment = $3, created_at = NOW() WHERE id = $4`,

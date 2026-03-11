@@ -1,6 +1,7 @@
 import "dotenv/config";
 import express from "express";
 import { getPool, healthCheck } from "./db/index.js";
+import { runDailyTrendingBatch } from "./worker-daily.js";
 
 export const app = express();
 
@@ -20,6 +21,17 @@ app.get("/health", async (_req, res) => {
 app.get("/ready", async (_req, res) => {
   const ok = await healthCheck();
   res.status(ok ? 200 : 503).json({ ready: ok });
+});
+
+// --- Dev: run worker to populate DB (for local Docker + frontend) ---
+app.post("/admin/run-worker", (_req, res) => {
+  const now = new Date();
+  const windowEnd = now;
+  const windowStart = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  res.status(202).json({ started: true, message: "Worker running for last 24h window. Refresh the page in a minute to see data." });
+  runDailyTrendingBatch(windowStart, windowEnd).catch((e) => {
+    console.error("Admin run-worker error:", e);
+  });
 });
 
 // --- Trending-focused API ---

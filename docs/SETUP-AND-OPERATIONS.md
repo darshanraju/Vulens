@@ -13,7 +13,7 @@ Create a `.env` file (or set these in Railway’s dashboard). Copy from `.env.ex
 | **DATABASE_URL**       | **Yes**    | Postgres connection string, e.g. `postgresql://user:password@host:5432/dbname`. Railway provides this when you add a Postgres plugin. |
 | **X_API_BEARER_TOKEN** | For worker | X (Twitter) API v2 Bearer Token for the Filtered Stream. If unset, the worker starts but ingestion is disabled (logs a warning).      |
 | **CASHTAG_RULES**      | No         | Comma-separated cashtag symbols to track, e.g. `SOL,BTC,ETH`. Default: `SOL,BTC,ETH`.                                                 |
-| **COINGECKO_API_KEY**  | No         | CoinGecko API key (e.g. demo key). Used for price at T=0 and outcome windows. Without it, price lookups can hit rate limits or fail.  |
+| **COINGECKO_API_KEY**  | No         | CoinGecko API key (e.g. demo key). Used for historical price at tweet time and at outcome windows. Without it, price lookups can hit rate limits or fail.  |
 | **PORT**               | No         | HTTP port for the API. Default: `3000`. Railway sets this automatically.                                                              |
 
 **Notes:**
@@ -93,8 +93,8 @@ npm run db:migrate
 The worker does three things in one process:
 
 1. **Ingestion** — Connects to X Filtered Stream for `$CASHTAG` tweets and persists them.
-2. **Enrichment** — For each new tweet: resolve asset, set T=0 price, set sentiment.
-3. **Scheduler (every 5 minutes)** — Outcome tracking (T+1h, 4h, 24h, 7d) then VuScore updates for accounts.
+2. **Enrichment** — For each new tweet: resolve asset, set T=0 price (at tweet time), set sentiment.
+3. **Scheduler (every 5 minutes)** — Outcome tracking (T+1h, 4h, 12h, 24h) then VuScore updates for accounts.
 
 ---
 
@@ -115,8 +115,8 @@ Uses `DATABASE_URL` from `.env`. For Railway, run this in a shell that has the s
 The backfill script runs three steps in order:
 
 1. **Outcome tracking** (multiple passes with delay)
-   - Finds posts that are **past** their outcome windows (T+1h, T+4h, T+24h, T+7d) and don’t yet have an outcome row for that window.
-   - For each such (post, window): loads the post’s asset and T=0 price, fetches current price from CoinGecko, computes `pct_delta`, and inserts into `outcomes` with `ON CONFLICT (post_id, window) DO NOTHING` (idempotent).
+   - Finds posts that are **past** their outcome windows (T+1h, T+4h, T+12h, T+24h) and don’t yet have an outcome row for that window.
+   - For each such (post, window): loads the post’s asset and T=0 price (at tweet time), fetches price at (posted_at + window) from CoinGecko historical API, computes `pct_delta`, and inserts into `outcomes` with `ON CONFLICT (post_id, window) DO NOTHING` (idempotent).
    - Runs **four** full passes of outcome tracking, with a **2 second** delay between passes (to reduce CoinGecko rate-limit issues). You can change this in code via `outcomeWindowDelayMs`.
 
 2. **Scoring**
@@ -163,7 +163,7 @@ Call these to confirm data is present and up to date (replace `BASE` with your A
    - `GET /posts/:id` for a recent post — Should have `asset_id`, `price_t0`, `sentiment` when the symbol was resolved and price/sentiment ran.
 
 3. **Outcomes**
-   - `GET /posts/:id` — `outcomes` array should get rows for 1h, 4h, 24h, 7d as time passes after `posted_at`. Scheduler runs every 5 minutes.
+   - `GET /posts/:id` — `outcomes` array should get rows for 1h, 4h, 12h, 24h as time passes after `posted_at`. Scheduler runs every 5 minutes.
 
 4. **Scoring**
    - `GET /leaderboard` — Accounts with recent posts and outcomes should have `vu_score` and `score_updated_at` updated after each scheduler run.

@@ -1,4 +1,4 @@
-import { describe, it, beforeAll, beforeEach, expect } from "vitest";
+import { describe, it, beforeAll, beforeEach, expect, vi } from "vitest";
 import request from "supertest";
 import { app } from "../api.js";
 import { applyMigrations, resetDatabase, isE2EDatabaseAvailable } from "../test-utils/db.js";
@@ -13,6 +13,14 @@ describe.skipIf(!isE2EDatabaseAvailable())("E2E: trending API", () => {
     await applyMigrations();
     if (!USE_REAL_X) {
       installMockFetch();
+      const priceSnapshot = await import("../enrichment/price-snapshot.js");
+      vi.spyOn(priceSnapshot, "getPriceAtTimeUsd").mockImplementation(
+        async (_id: string, at: Date) => {
+          const t = at.getTime();
+          const tweetTime = new Date("2026-03-10T10:00:00.000Z").getTime();
+          return Math.abs(t - tweetTime) < 60 * 1000 ? 1.0 : 1.1;
+        }
+      );
     }
   });
 

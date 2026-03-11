@@ -10,12 +10,12 @@ vi.mock("./asset-resolver.js", () => ({
   getCoinGeckoId: vi.fn(),
 }));
 vi.mock("./price-snapshot.js", () => ({
-  getCurrentPriceUsd: vi.fn(),
+  getPriceAtTimeUsd: vi.fn(),
 }));
 
 const { resolveAsset } = await import("./resolve-and-insert.js");
 const { getCoinGeckoId } = await import("./asset-resolver.js");
-const { getCurrentPriceUsd } = await import("./price-snapshot.js");
+const { getPriceAtTimeUsd } = await import("./price-snapshot.js");
 
 describe("enrich-post", () => {
   let pool: Pool;
@@ -35,13 +35,13 @@ describe("enrich-post", () => {
     pool = { query: vi.fn().mockResolvedValue({ rowCount: 1 }) } as unknown as Pool;
     vi.mocked(resolveAsset).mockReset().mockResolvedValue(1);
     vi.mocked(getCoinGeckoId).mockReset().mockReturnValue("solana");
-    vi.mocked(getCurrentPriceUsd).mockReset().mockResolvedValue(142.5);
+    vi.mocked(getPriceAtTimeUsd).mockReset().mockResolvedValue(142.5);
   });
 
-  it("updates post with asset_id and price_t0, updates account metadata", async () => {
+  it("updates post with asset_id and price_t0 at tweet time, updates account metadata", async () => {
     await enrichPost(pool, tweet);
     expect(resolveAsset).toHaveBeenCalledWith(pool, "SOL");
-    expect(getCurrentPriceUsd).toHaveBeenCalledWith("solana");
+    expect(getPriceAtTimeUsd).toHaveBeenCalledWith("solana", new Date(tweet.created_at));
     expect(pool.query).toHaveBeenCalledWith(
       expect.stringContaining("UPDATE posts SET asset_id"),
       [1, 142.5, "bullish", "100"]
@@ -64,6 +64,7 @@ describe("enrich-post", () => {
   it("updates post only when asset resolved, skips account metadata when empty", async () => {
     vi.mocked(resolveAsset).mockResolvedValue(2);
     await enrichPost(pool, { ...tweet, raw: { data: { entities: { symbols: [{ tag: "BTC" }] } } } });
+    expect(getPriceAtTimeUsd).toHaveBeenCalledWith(expect.any(String), new Date(tweet.created_at));
     expect(pool.query).toHaveBeenCalledWith(
       expect.stringContaining("UPDATE posts"),
       [2, expect.any(Number), "bullish", "100"]

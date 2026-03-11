@@ -19,7 +19,7 @@ export function isE2EDatabaseAvailable(): boolean {
  */
 export async function applyMigrations(): Promise<void> {
   const pool = getPool();
-  const migrationFiles = ["001_initial.sql", "002_asset_trending.sql"];
+  const migrationFiles = ["001_initial.sql", "002_asset_trending.sql", "003_outcome_windows_12h.sql"];
   for (const file of migrationFiles) {
     const sql = readFileSync(join(process.cwd(), "migrations", file), "utf-8");
     await pool.query(sql);

@@ -1,21 +1,34 @@
 /**
- * Phase 1c — Outcome tracking: T+1h, T+4h, T+24h, T+7d.
- * Finds posts due for each window, fetches current price, writes outcomes with idempotency.
+ * Phase 1c — Outcome tracking: T+1h, T+4h, T+12h, T+24h.
+ * Finds posts due for each window, fetches price at (posted_at + window), writes outcomes with idempotency.
  */
 import type { Pool } from "pg";
-import { getCurrentPriceUsd } from "../enrichment/price-snapshot.js";
+import { getPriceAtTimeUsd } from "../enrichment/price-snapshot.js";
 
-export const OUTCOME_WINDOWS = ["1h", "4h", "24h"] as const;
+export const OUTCOME_WINDOWS = ["1h", "4h", "12h", "24h"] as const;
 export type OutcomeWindow = (typeof OUTCOME_WINDOWS)[number];
 
 const WINDOW_TO_INTERVAL: Record<OutcomeWindow, string> = {
   "1h": "1 hour",
   "4h": "4 hours",
+  "12h": "12 hours",
   "24h": "24 hours",
+};
+
+/** Milliseconds per window for computing target time from posted_at */
+const WINDOW_TO_MS: Record<OutcomeWindow, number> = {
+  "1h": 60 * 60 * 1000,
+  "4h": 4 * 60 * 60 * 1000,
+  "12h": 12 * 60 * 60 * 1000,
+  "24h": 24 * 60 * 60 * 1000,
 };
 
 export function windowToInterval(window: OutcomeWindow): string {
   return WINDOW_TO_INTERVAL[window];
+}
+
+export function addIntervalToPostedAt(postedAt: Date, window: OutcomeWindow): Date {
+  return new Date(postedAt.getTime() + WINDOW_TO_MS[window]);
 }
 
 export interface PostDueForOutcome {
@@ -23,6 +36,7 @@ export interface PostDueForOutcome {
   asset_id: number;
   price_t0: string;
   coingecko_id: string | null;
+  posted_at: Date;
 }
 
 /**
@@ -35,7 +49,7 @@ export async function getPostsDueForOutcome(
 ): Promise<PostDueForOutcome[]> {
   const interval = windowToInterval(window);
   const q = `
-    SELECT p.id AS post_id, p.asset_id, p.price_t0::text AS price_t0, a.coingecko_id
+    SELECT p.id AS post_id, p.asset_id, p.posted_at, p.price_t0::text AS price_t0, a.coingecko_id
     FROM posts p
     JOIN assets a ON a.id = p.asset_id
     WHERE p.asset_id IS NOT NULL
@@ -46,7 +60,10 @@ export async function getPostsDueForOutcome(
       )
   `;
   const r = await pool.query(q, [interval, window]);
-  return r.rows as PostDueForOutcome[];
+  return (r.rows as Array<{ post_id: number; asset_id: number; posted_at: Date; price_t0: string; coingecko_id: string | null }>).map((row) => ({
+    ...row,
+    posted_at: new Date(row.posted_at),
+  }));
 }
 
 /**
@@ -73,7 +90,8 @@ export async function runOutcomeTrackingForWindow(
       errors++;
       continue;
     }
-    const priceAtWindow = await getCurrentPriceUsd(row.coingecko_id);
+    const targetTime = addIntervalToPostedAt(row.posted_at, window);
+    const priceAtWindow = await getPriceAtTimeUsd(row.coingecko_id, targetTime);
     if (priceAtWindow == null) {
       errors++;
       continue;

@@ -16,6 +16,8 @@
     "test:watch": "vitest",
     "test:e2e": "vitest run -c vitest.config.e2e.ts src/e2e",
     "e2e:db": "./scripts/start-e2e-db.sh",
+    "dev:local": "./scripts/run-local-dev.sh",
+    "dev:local-mock": "./scripts/run-local-dev-mock.sh",
     "lint": "eslint src --ext .ts"
   },
   "engines": {

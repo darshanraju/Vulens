@@ -48,6 +48,10 @@ export async function searchVerifiedTweetsForSymbol(
   let nextToken: string | undefined;
   let collected = 0;
 
+  console.log(
+    `[X] Fetching tweets for $${symbol} (window ${windowStart.toISOString()} – ${windowEnd.toISOString()}, limit ${limitPerAsset})`
+  );
+
   while (collected < limitPerAsset) {
     const url = new URL(X_SEARCH_URL);
     url.searchParams.set("query", query);
@@ -69,6 +73,9 @@ export async function searchVerifiedTweetsForSymbol(
     }
     const data = (await res.json()) as XSearchResponse;
     const batchCount = data.data?.length ?? 0;
+    if (batchCount > 0) {
+      console.log(`[X] $${symbol}: received ${batchCount} tweets (total collected: ${collected + batchCount})`);
+    }
     if (batchCount === 0) break;
     results.push(data);
     collected += batchCount;
@@ -76,6 +83,7 @@ export async function searchVerifiedTweetsForSymbol(
     if (!nextToken) break;
   }
 
+  console.log(`[X] $${symbol}: fetch complete, ${collected} tweets in ${results.length} batch(es)`);
   return results;
 }
 
@@ -136,6 +144,7 @@ export async function ingestTrendingTweetsForAsset(
     }
   }
 
+  console.log(`[X] $${symbol}: ingested ${inserted} posts (asset_id=${assetId})`);
   return inserted;
 }
 

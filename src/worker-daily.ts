@@ -8,7 +8,7 @@ import "dotenv/config";
 import { getPool } from "./db/index.js";
 import { fetchTrendingAssets, upsertTrendingAssets } from "./trending/coingecko.js";
 import { ingestTrendingTweetsForAsset } from "./x/search-trending.js";
-import { getCurrentPriceUsd } from "./enrichment/price-snapshot.js";
+import { getPriceAtTimeUsd } from "./enrichment/price-snapshot.js";
 import { runOutcomeTracking } from "./outcomes/outcome-tracking.js";
 import { runScoring } from "./scoring/compute-account-score.js";
 
@@ -46,21 +46,17 @@ export async function runDailyTrendingBatch(
     console.log("Inserted tweets for", row.symbol, ":", inserted);
   }
 
-  // Set price_t0 for newly ingested posts (required for outcome tracking)
+  // Set price_t0 for newly ingested posts (price at tweet time; required for outcome tracking)
   const postsWithoutPrice = await pool.query(
-    `SELECT p.id, p.asset_id, a.coingecko_id
+    `SELECT p.id, p.asset_id, p.posted_at, a.coingecko_id
      FROM posts p
      JOIN assets a ON a.id = p.asset_id
      WHERE p.price_t0 IS NULL AND a.coingecko_id IS NOT NULL`
   );
-  const priceByAsset = new Map<number, number>();
-  for (const row of postsWithoutPrice.rows as Array<{ id: string; asset_id: number; coingecko_id: string }>) {
-    let price = priceByAsset.get(row.asset_id);
-    if (price === undefined) {
-      price = (await getCurrentPriceUsd(row.coingecko_id)) ?? 0;
-      priceByAsset.set(row.asset_id, price);
-    }
-    if (price > 0) {
+  for (const row of postsWithoutPrice.rows as Array<{ id: string; asset_id: number; posted_at: Date; coingecko_id: string }>) {
+    const postedAt = new Date(row.posted_at);
+    const price = await getPriceAtTimeUsd(row.coingecko_id, postedAt);
+    if (price != null && price > 0) {
       await pool.query("UPDATE posts SET price_t0 = $1 WHERE id = $2", [price, row.id]);
     }
   }
