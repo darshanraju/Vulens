@@ -24,12 +24,13 @@ export async function runDailyTrendingBatch(
 
   await upsertTrendingAssets(pool, trending, windowStart, windowEnd);
 
-  // Reload with asset_ids
+  // Reload with asset_ids (exclude BTC, ETH, SOL from tweet ingestion)
   const res = await pool.query(
     `SELECT at.asset_id, a.symbol
      FROM asset_trending at
      JOIN assets a ON a.id = at.asset_id
-     WHERE at.window_start = $1 AND at.window_end = $2`,
+     WHERE at.window_start = $1 AND at.window_end = $2
+       AND a.symbol NOT IN ('BTC', 'ETH', 'SOL')`,
     [windowStart, windowEnd]
   );
 
