@@ -1,0 +1,22 @@
+# Postgres for E2E tests. Schema is applied from migrations on first start.
+# Start:   docker compose -f docker-compose.e2e.yml up -d
+# Stop:    docker compose -f docker-compose.e2e.yml down
+# Then:    DATABASE_URL='postgresql://vu_test:vu_test@localhost:5433/vu_test' npm run test:e2e
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: vu_e2e_postgres
+    environment:
+      POSTGRES_USER: vu_test
+      POSTGRES_PASSWORD: vu_test
+      POSTGRES_DB: vu_test
+    ports:
+      - "5433:5432"
+    volumes:
+      - ./migrations:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vu_test -d vu_test"]
+      interval: 2s
+      timeout: 5s
+      retries: 10

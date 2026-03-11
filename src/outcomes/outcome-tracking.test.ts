@@ -99,7 +99,7 @@ describe("outcome-tracking", () => {
       const insertCall = vi.mocked(pool.query).mock.calls.find((c) =>
         String(c[0]).includes("INSERT INTO outcomes")
       );
-      expect(insertCall?.[0]).toMatch(/ON CONFLICT \(post_id, window\) DO NOTHING/);
+      expect(insertCall?.[0]).toMatch(/ON CONFLICT \(post_id, "window"\) DO NOTHING/);
     });
 
     it("counts errors when coingecko_id is null", async () => {

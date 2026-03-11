@@ -51,11 +51,11 @@ CREATE INDEX IF NOT EXISTS idx_posts_posted_at_asset ON posts(posted_at, asset_i
 -- Outcomes (price at T+1h, T+4h, T+24h, T+7d per post)
 CREATE TABLE IF NOT EXISTS outcomes (
   post_id BIGINT NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
-  window TEXT NOT NULL CHECK (window IN ('1h', '4h', '24h', '7d')),
+  "window" TEXT NOT NULL CHECK ("window" IN ('1h', '4h', '24h', '7d')),
   price_at_window NUMERIC(20,8),
   pct_delta NUMERIC(10,4),
   created_at TIMESTAMPTZ DEFAULT NOW(),
-  PRIMARY KEY (post_id, window)
+  PRIMARY KEY (post_id, "window")
 );
 
 CREATE INDEX IF NOT EXISTS idx_outcomes_post_id ON outcomes(post_id);

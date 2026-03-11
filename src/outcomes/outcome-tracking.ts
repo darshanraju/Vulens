@@ -42,7 +42,7 @@ export async function getPostsDueForOutcome(
       AND p.price_t0 IS NOT NULL
       AND p.posted_at + ($1::interval) <= NOW()
       AND NOT EXISTS (
-        SELECT 1 FROM outcomes o WHERE o.post_id = p.id AND o.window = $2
+        SELECT 1 FROM outcomes o WHERE o.post_id = p.id AND o."window" = $2
       )
   `;
   const r = await pool.query(q, [interval, window]);
@@ -83,9 +83,9 @@ export async function runOutcomeTrackingForWindow(
 
     try {
       await pool.query(
-        `INSERT INTO outcomes (post_id, window, price_at_window, pct_delta)
+        `INSERT INTO outcomes (post_id, "window", price_at_window, pct_delta)
          VALUES ($1, $2, $3, $4)
-         ON CONFLICT (post_id, window) DO NOTHING`,
+         ON CONFLICT (post_id, "window") DO NOTHING`,
         [row.post_id, window, priceAtWindow, pctDelta]
       );
       processed++;

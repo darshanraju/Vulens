@@ -56,7 +56,7 @@ app.get("/trending-assets/:id/posts", async (req, res) => {
     );
     const posts = r.rows;
     const outcomeRows = await pool.query(
-      "SELECT post_id, window, price_at_window, pct_delta FROM outcomes WHERE post_id = ANY($1::bigint[])",
+      'SELECT post_id, "window", price_at_window, pct_delta FROM outcomes WHERE post_id = ANY($1::bigint[])',
       [posts.map((p) => p.id)]
     );
     const byPost: Record<string, unknown[]> = {};
@@ -154,7 +154,7 @@ app.get("/posts/:id", async (req, res) => {
     );
     if (r.rows.length === 0) return res.status(404).json({ error: "Not found" });
     const post = r.rows[0];
-    const outcomes = await pool.query("SELECT window, price_at_window, pct_delta FROM outcomes WHERE post_id = $1", [req.params.id]);
+    const outcomes = await pool.query('SELECT "window", price_at_window, pct_delta FROM outcomes WHERE post_id = $1', [req.params.id]);
     res.json({ ...post, outcomes: outcomes.rows });
   } catch (e) {
     console.error("GET /posts/:id", e);
