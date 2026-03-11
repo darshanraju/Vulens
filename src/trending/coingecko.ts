@@ -16,6 +16,14 @@ interface CoinGeckoTrendingResponse {
   }>;
 }
 
+type CoinGeckoMarket = {
+  id: string;
+  symbol: string;
+  market_cap: number | null;
+};
+
+const MAX_MARKET_CAP_USD = 30_000_000;
+
 export async function fetchTrendingAssets(): Promise<TrendingAsset[]> {
   const url = new URL(`${COINGECKO_BASE}/search/trending`);
   const key = process.env.COINGECKO_API_KEY;
@@ -29,10 +37,35 @@ export async function fetchTrendingAssets(): Promise<TrendingAsset[]> {
   }
 
   const data = (await res.json()) as CoinGeckoTrendingResponse;
-  return data.coins.map((c) => ({
+  const trending = data.coins.map((c) => ({
     symbol: c.item.symbol.toUpperCase(),
     coingeckoId: c.item.id,
   }));
+
+  // CoinGecko "trending" doesn't include market cap; fetch markets data for filtering.
+  const marketsUrl = new URL(`${COINGECKO_BASE}/coins/markets`);
+  marketsUrl.searchParams.set("vs_currency", "usd");
+  marketsUrl.searchParams.set("ids", trending.map((t) => t.coingeckoId).join(","));
+  marketsUrl.searchParams.set("order", "market_cap_desc");
+  marketsUrl.searchParams.set("per_page", "250");
+  marketsUrl.searchParams.set("page", "1");
+  marketsUrl.searchParams.set("sparkline", "false");
+
+  const marketsRes = await fetch(marketsUrl.toString(), { headers });
+  if (!marketsRes.ok) {
+    const text = await marketsRes.text();
+    throw new Error(`CoinGecko markets failed ${marketsRes.status}: ${text}`);
+  }
+  const markets = (await marketsRes.json()) as CoinGeckoMarket[];
+  const marketCapById = new Map<string, number | null>();
+  for (const m of markets) {
+    marketCapById.set(m.id, m.market_cap ?? null);
+  }
+
+  return trending.filter((t) => {
+    const mc = marketCapById.get(t.coingeckoId);
+    return typeof mc === "number" && mc > 0 && mc < MAX_MARKET_CAP_USD;
+  });
 }
 
 export async function upsertTrendingAssets(

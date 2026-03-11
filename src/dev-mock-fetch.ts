@@ -16,6 +16,13 @@ const MOCK_TRENDING = {
   ],
 };
 
+const MOCK_MARKETS = [
+  // Keep PEPE/WIF under $30M so they survive the filter; BTC is huge so it gets filtered out.
+  { id: "pepe", symbol: "pepe", market_cap: 25_000_000 },
+  { id: "dogwifhat", symbol: "wif", market_cap: 20_000_000 },
+  { id: "bitcoin", symbol: "btc", market_cap: 900_000_000_000 },
+];
+
 const MOCK_SYMBOLS = ["PEPE", "WIF", "BTC"] as const;
 function symbolIndex(symbol: string): number {
   const i = MOCK_SYMBOLS.indexOf(symbol.toUpperCase() as (typeof MOCK_SYMBOLS)[number]);
@@ -56,6 +63,14 @@ globalThis.fetch = async function mockFetch(
   // CoinGecko trending
   if (urlObj.hostname.includes("api.coingecko.com") && url.includes("/search/trending")) {
     return new Response(JSON.stringify(MOCK_TRENDING), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  // CoinGecko coins/markets (market caps for trending filter)
+  if (urlObj.hostname.includes("api.coingecko.com") && urlObj.pathname.includes("/coins/markets")) {
+    return new Response(JSON.stringify(MOCK_MARKETS), {
       status: 200,
       headers: { "Content-Type": "application/json" },
     });

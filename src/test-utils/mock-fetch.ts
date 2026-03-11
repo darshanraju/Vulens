@@ -24,6 +24,16 @@ export function mockCoinGeckoTrending(body: unknown, status = 200) {
   });
 }
 
+export function mockCoinGeckoMarkets(body: unknown, status = 200) {
+  matchers.push((input) => {
+    const urlObj = new URL(typeof input === "string" ? input : input.toString());
+    if (urlObj.hostname.includes("api.coingecko.com") && urlObj.pathname.includes("/coins/markets")) {
+      return { status, body };
+    }
+    return undefined;
+  });
+}
+
 export function mockCoinGeckoPrice(body: unknown, status = 200) {
   matchers.push((input) => {
     const url = typeof input === "string" ? input : input.toString();

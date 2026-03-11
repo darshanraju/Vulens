@@ -2,7 +2,7 @@ import { describe, it, beforeAll, beforeEach, expect, vi } from "vitest";
 import request from "supertest";
 import { app } from "../api.js";
 import { applyMigrations, resetDatabase, isE2EDatabaseAvailable } from "../test-utils/db.js";
-import { installMockFetch, resetMockFetch, mockCoinGeckoTrending, mockCoinGeckoPrice, mockXSearch } from "../test-utils/mock-fetch.js";
+import { installMockFetch, resetMockFetch, mockCoinGeckoTrending, mockCoinGeckoMarkets, mockCoinGeckoPrice, mockXSearch } from "../test-utils/mock-fetch.js";
 import { runDailyTrendingBatch } from "../worker-daily.js";
 import { getPool } from "../db/index.js";
 
@@ -41,6 +41,10 @@ describe.skipIf(!isE2EDatabaseAvailable())("E2E: trending API", () => {
         { item: { id: "dogwifhat", symbol: "wif" } },
       ],
     });
+    mockCoinGeckoMarkets([
+      { id: "pepe", symbol: "pepe", market_cap: 25_000_000 },
+      { id: "dogwifhat", symbol: "wif", market_cap: 20_000_000 },
+    ]);
     mockCoinGeckoPrice({
       pepe: { usd: 1.0 },
       dogwifhat: { usd: 2.0 },
