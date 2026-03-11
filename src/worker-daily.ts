@@ -73,7 +73,7 @@ async function main() {
   console.log("Worker (daily) connected to DB, rows:", r.rowCount);
 
   const now = new Date();
-  const windowEnd = now;
+  const windowEnd = new Date(now.getTime() - 30 * 1000); // X API requires end_time ≥ 10s in the past
   const windowStart = new Date(now.getTime() - 24 * 60 * 60 * 1000);
 
   console.log("Trending window:", windowStart.toISOString(), "→", windowEnd.toISOString());
